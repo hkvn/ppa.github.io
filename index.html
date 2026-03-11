@@ -74,6 +74,60 @@
         background: var(--accent-soft);
       }
 
+      .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .view-toggle button {
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .view-toggle button.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .view-toggle button:hover:not(.active) {
+        background: var(--accent-soft);
+      }
+
+      .event-group {
+        margin-bottom: 2rem;
+      }
+
+      .event-group-header {
+        background: linear-gradient(135deg, var(--accent), #1e5fd9);
+        color: #fff;
+        padding: 1rem 1.25rem;
+        border-radius: 12px 12px 0 0;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .event-group-count {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+      }
+
+      .event-group .table-wrapper {
+        border-radius: 0 0 18px 18px;
+        border-top: none;
+      }
+
       .filter-group label {
         display: flex;
         flex-direction: column;
@@ -259,6 +313,11 @@
         <p class="status"><span id="resultCount">0</span> người chơi</p>
       </header>
 
+      <div class="view-toggle">
+        <button id="viewTable" class="active">Xem dạng bảng</button>
+        <button id="viewByEvent">Phân loại theo Event</button>
+      </div>
+
       <section class="filters">
         <div class="filter-group">
           <label>
@@ -316,28 +375,41 @@
             <input type="text" data-filter="eventText" placeholder="Ví dụ Doubles" />
           </label>
         </div>
+        <div class="filter-group" id="eventFilterGroup" style="display: none;">
+          <label>
+            Chọn sự kiện cụ thể
+            <select data-filter="selectedEvent" id="eventSelector">
+              <option value="all">Tất cả sự kiện</option>
+            </select>
+          </label>
+        </div>
         <div class="filter-group">
           <label>&nbsp;</label>
           <button class="reset-btn" id="resetFilters">Xóa bộ lọc</button>
         </div>
       </section>
 
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Người chơi</th>
-              <th>Giới tính</th>
-              <th>Tuổi</th>
-              <th>Địa điểm</th>
-              <th>DUPR</th>
-              <th>Số sự kiện</th>
-              <th>Sự kiện đăng ký</th>
-            </tr>
-          </thead>
-          <tbody id="playersBody"></tbody>
-        </table>
+      <div id="tableView">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Người chơi</th>
+                <th>Giới tính</th>
+                <th>Tuổi</th>
+                <th>Địa điểm</th>
+                <th>DUPR</th>
+                <th>Số sự kiện</th>
+                <th>Sự kiện đăng ký</th>
+              </tr>
+            </thead>
+            <tbody id="playersBody"></tbody>
+          </table>
+        </div>
       </div>
+      
+      <div id="eventView" style="display: none;"></div>
+      
       <p id="statusMessage" class="status" style="margin-top: 1rem">Đang tải dữ liệu...</p>
     </main>
 
@@ -351,17 +423,25 @@
         dupr: "all",
         minEvents: "",
         eventText: "",
+        selectedEvent: "all",
       };
 
       let players = [];
+      let currentView = "table";
+      let allEvents = [];
 
       const playersBody = document.querySelector("#playersBody");
       const resultCount = document.querySelector("#resultCount");
       const statusMessage = document.querySelector("#statusMessage");
+      const tableView = document.querySelector("#tableView");
+      const eventView = document.querySelector("#eventView");
+      const viewTableBtn = document.querySelector("#viewTable");
+      const viewByEventBtn = document.querySelector("#viewByEvent");
 
       const formatLocation = (value) => (value ? value : "—");
 
       const parseNumber = (value) => {
+        if (value === "" || value === null || value === undefined) return null;
         const num = Number(value);
         return Number.isFinite(num) ? num : null;
       };
@@ -480,8 +560,164 @@
       const eventsCountMarkup = (player) => player.events?.length ?? 0;
 
       const applyFilters = () => {
+        console.log("🔍 Applying filters...");
+        console.log("Total players before filter:", players.length);
+        console.log("Active filters:", filters);
         const filtered = players.filter(matchesFilters);
-        renderTable(filtered);
+        console.log("Players after filter:", filtered.length);
+        if (currentView === "table") {
+          renderTable(filtered);
+        } else {
+          renderByEvent(filtered);
+        }
+      };
+
+      const renderByEvent = (data) => {
+        eventView.innerHTML = "";
+        if (!data.length) {
+          eventView.innerHTML = '<p style="text-align:center;color:var(--muted);padding:2rem;">Không tìm thấy người chơi nào với bộ lọc hiện tại.</p>';
+          resultCount.textContent = "0";
+          statusMessage.textContent = "Hãy điều chỉnh bộ lọc để xem thêm dữ liệu.";
+          return;
+        }
+
+        const eventGroups = {};
+        
+        data.forEach((player) => {
+          if (!player.events || player.events.length === 0) {
+            if (!eventGroups["Chưa đăng ký sự kiện"]) {
+              eventGroups["Chưa đăng ký sự kiện"] = [];
+            }
+            eventGroups["Chưa đăng ký sự kiện"].push(player);
+          } else {
+            player.events.forEach((event) => {
+              const eventKey = `${event.title} - ${event.date}`;
+              if (!eventGroups[eventKey]) {
+                eventGroups[eventKey] = [];
+              }
+              if (!eventGroups[eventKey].find(p => p.playerId === player.playerId)) {
+                eventGroups[eventKey].push(player);
+              }
+            });
+          }
+        });
+
+        let sortedEvents = Object.keys(eventGroups).sort();
+        
+        if (filters.selectedEvent !== "all") {
+          sortedEvents = sortedEvents.filter(e => e === filters.selectedEvent);
+        }
+        let totalPlayers = 0;
+
+        sortedEvents.forEach((eventName) => {
+          const playersInEvent = eventGroups[eventName];
+          totalPlayers += playersInEvent.length;
+          
+          const groupDiv = document.createElement("div");
+          groupDiv.className = "event-group";
+          
+          const headerDiv = document.createElement("div");
+          headerDiv.className = "event-group-header";
+          headerDiv.innerHTML = `
+            <span>${eventName}</span>
+            <span class="event-group-count">${playersInEvent.length} người chơi</span>
+          `;
+          
+          const tableWrapper = document.createElement("div");
+          tableWrapper.className = "table-wrapper";
+          
+          const table = document.createElement("table");
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>Người chơi</th>
+                <th>Giới tính</th>
+                <th>Tuổi</th>
+                <th>Địa điểm</th>
+                <th>DUPR</th>
+                <th>Đối tác</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          `;
+          
+          const tbody = table.querySelector("tbody");
+          playersInEvent.forEach((player) => {
+            const eventInfo = player.events?.find(e => `${e.title} - ${e.date}` === eventName);
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>
+                <div class="player-cell">
+                  <img src="${player.imgUrl}" alt="${player.fullName}" />
+                  <div class="player-meta">
+                    <strong>${player.fullName}</strong>
+                    <span class="location-tag">${formatLocation(player.location)}</span>
+                  </div>
+                </div>
+              </td>
+              <td>${player.gender || "—"}</td>
+              <td>${player.age || "—"}</td>
+              <td>${formatLocation(player.location)}</td>
+              <td>
+                <span class="badge ${player.playerDuprActive ? "" : "inactive"}">
+                  ${player.playerDuprActive ? "Active" : "Inactive"}
+                </span>
+              </td>
+              <td>${eventInfo?.partnerName || "—"}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+          
+          tableWrapper.appendChild(table);
+          groupDiv.appendChild(headerDiv);
+          groupDiv.appendChild(tableWrapper);
+          eventView.appendChild(groupDiv);
+        });
+
+        resultCount.textContent = data.length.toString();
+        statusMessage.textContent = `Đang hiển thị ${data.length} người chơi trong ${sortedEvents.length} sự kiện.`;
+      };
+
+      const switchView = (view) => {
+        currentView = view;
+        const eventFilterGroup = document.getElementById("eventFilterGroup");
+        
+        if (view === "table") {
+          tableView.style.display = "block";
+          eventView.style.display = "none";
+          eventFilterGroup.style.display = "none";
+          viewTableBtn.classList.add("active");
+          viewByEventBtn.classList.remove("active");
+        } else {
+          tableView.style.display = "none";
+          eventView.style.display = "block";
+          eventFilterGroup.style.display = "block";
+          viewTableBtn.classList.remove("active");
+          viewByEventBtn.classList.add("active");
+        }
+        applyFilters();
+      };
+
+      const populateEventSelector = () => {
+        const eventSet = new Set();
+        players.forEach((player) => {
+          if (player.events && player.events.length > 0) {
+            player.events.forEach((event) => {
+              eventSet.add(`${event.title} - ${event.date}`);
+            });
+          }
+        });
+        
+        allEvents = Array.from(eventSet).sort();
+        const eventSelector = document.getElementById("eventSelector");
+        
+        eventSelector.innerHTML = '<option value="all">Tất cả sự kiện</option>';
+        allEvents.forEach((eventName) => {
+          const option = document.createElement("option");
+          option.value = eventName;
+          option.textContent = eventName;
+          eventSelector.appendChild(option);
+        });
       };
 
       const attachFilterListeners = () => {
@@ -497,10 +733,15 @@
           Object.keys(filters).forEach((key) => (filters[key] = ""));
           filters.gender = "all";
           filters.dupr = "all";
+          filters.selectedEvent = "all";
 
           document.querySelectorAll("[data-filter]").forEach((control) => {
             if (control.tagName === "SELECT") {
-              control.value = control.dataset.filter === "gender" || control.dataset.filter === "dupr" ? "all" : "";
+              if (control.dataset.filter === "gender" || control.dataset.filter === "dupr" || control.dataset.filter === "selectedEvent") {
+                control.value = "all";
+              } else {
+                control.value = "";
+              }
             } else {
               control.value = "";
             }
@@ -512,17 +753,24 @@
       const loadPlayers = async () => {
         statusMessage.textContent = "Đang tải dữ liệu...";
         try {
-          const response = await fetch("players.json");
+          const cacheBuster = new Date().getTime();
+          const response = await fetch(`players.json?v=${cacheBuster}`);
           if (!response.ok) throw new Error("Không thể tải players.json");
           players = await response.json();
+          console.log(`✅ Đã tải ${players.length} người chơi từ players.json`);
+          console.log("Sample player:", players[0]);
+          populateEventSelector();
           statusMessage.textContent = `Đã tải ${players.length} người chơi.`;
           applyFilters();
         } catch (error) {
-          console.error(error);
+          console.error("❌ Lỗi khi tải dữ liệu:", error);
           statusMessage.textContent = "Có lỗi khi tải dữ liệu. Vui lòng kiểm tra lại players.json";
         }
       };
 
+      viewTableBtn.addEventListener("click", () => switchView("table"));
+      viewByEventBtn.addEventListener("click", () => switchView("event"));
+      
       attachFilterListeners();
       loadPlayers();
     </script>
