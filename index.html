@@ -101,6 +101,26 @@
         background: var(--accent-soft);
       }
 
+      .event-selector-highlight {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, rgba(44, 126, 251, 0.08), rgba(30, 95, 217, 0.08));
+        padding: 1rem;
+        border-radius: 12px;
+        border: 2px solid var(--accent);
+      }
+
+      .event-selector-highlight label {
+        color: var(--accent);
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+
+      .event-selector-highlight select {
+        border: 2px solid var(--accent);
+        font-weight: 600;
+        font-size: 1rem;
+      }
+
       .event-group {
         margin-bottom: 2rem;
       }
@@ -314,11 +334,19 @@
       </header>
 
       <div class="view-toggle">
-        <button id="viewTable" class="active">Xem dạng bảng</button>
-        <button id="viewByEvent">Phân loại theo Event</button>
+        <button id="viewByEvent" class="active">Phân loại theo Event</button>
+        <button id="viewTable">Xem dạng bảng</button>
       </div>
 
       <section class="filters">
+        <div class="filter-group event-selector-highlight" id="eventFilterGroup" style="display: block;">
+          <label>
+            🎯 Chọn sự kiện cụ thể
+            <select data-filter="selectedEvent" id="eventSelector">
+              <option value="all">Tất cả sự kiện</option>
+            </select>
+          </label>
+        </div>
         <div class="filter-group">
           <label>
             Họ tên
@@ -375,14 +403,6 @@
             <input type="text" data-filter="eventText" placeholder="Ví dụ Doubles" />
           </label>
         </div>
-        <div class="filter-group" id="eventFilterGroup" style="display: none;">
-          <label>
-            Chọn sự kiện cụ thể
-            <select data-filter="selectedEvent" id="eventSelector">
-              <option value="all">Tất cả sự kiện</option>
-            </select>
-          </label>
-        </div>
         <div class="filter-group">
           <label>&nbsp;</label>
           <button class="reset-btn" id="resetFilters">Xóa bộ lọc</button>
@@ -427,7 +447,7 @@
       };
 
       let players = [];
-      let currentView = "table";
+      let currentView = "event";
       let allEvents = [];
 
       const playersBody = document.querySelector("#playersBody");
