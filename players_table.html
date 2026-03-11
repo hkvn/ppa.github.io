@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng người chơi Pickleball</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: linear-gradient(135deg, #f8fbff, #e1ecff, #f8fbff);
+        --card-bg: rgba(255, 255, 255, 0.92);
+        --border: #d7e2f2;
+        --text: #17233b;
+        --muted: #5f6b80;
+        --accent: #2c7efb;
+        --accent-soft: rgba(44, 126, 251, 0.12);
+        font-family: "Space Grotesk", "SF Pro Display", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background-image: var(--bg);
+        color: var(--text);
+        padding: 2.5rem 1.25rem 3rem;
+      }
+
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border-radius: 24px;
+        padding: 2rem;
+        box-shadow: 0 40px 80px rgba(23, 35, 59, 0.1);
+        border: 1px solid var(--border);
+      }
+
+      header {
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+        margin: 0;
+      }
+
+      header p {
+        margin: 0.25rem 0 0;
+        color: var(--muted);
+      }
+
+      .status {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1.25rem;
+        border-radius: 18px;
+        background: var(--accent-soft);
+      }
+
+      .filter-group label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--muted);
+        gap: 0.35rem;
+      }
+
+      .filter-group input,
+      .filter-group select {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.55rem 0.9rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        background: #fff;
+        color: var(--text);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .filter-group input:focus,
+      .filter-group select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(44, 126, 251, 0.2);
+      }
+
+      .reset-btn {
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        padding: 0.65rem 1.3rem;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .reset-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(44, 126, 251, 0.3);
+      }
+
+      .table-wrapper {
+        overflow-x: auto;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 960px;
+      }
+
+      thead {
+        background: rgba(239, 245, 255, 0.95);
+      }
+
+      th,
+      td {
+        padding: 0.85rem 0.9rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+
+      tbody tr:hover {
+        background: rgba(44, 126, 251, 0.035);
+      }
+
+      .player-cell {
+        display: flex;
+        gap: 0.9rem;
+        align-items: center;
+      }
+
+      .player-cell img {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        object-fit: cover;
+        background: #fff;
+      }
+
+      .player-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .location-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(93, 212, 166, 0.15);
+        color: #067a4f;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .badge.inactive {
+        background: rgba(255, 168, 0, 0.15);
+        color: #9d5d00;
+      }
+
+      .event-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        max-height: 160px;
+        overflow-y: auto;
+      }
+
+      .event-list li {
+        padding: 0.5rem 0.65rem;
+        border-radius: 10px;
+        background: #f6f9ff;
+        border: 1px solid rgba(23, 35, 59, 0.05);
+      }
+
+      .event-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.2rem;
+      }
+
+      .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 1rem;
+        }
+
+        main {
+          padding: 1.25rem;
+        }
+
+        .filters {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Bảng người chơi Pickleball</h1>
+          <p>
+            Tìm kiếm, lọc theo giới tính, tuổi, vị trí, tình trạng DUPR và số sự kiện đã
+            đăng ký.
+          </p>
+        </div>
+        <p class="status"><span id="resultCount">0</span> người chơi</p>
+      </header>
+
+      <section class="filters">
+        <div class="filter-group">
+          <label>
+            Họ tên
+            <input type="text" data-filter="fullName" placeholder="Nhập tên..." />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Giới tính
+            <select data-filter="gender">
+              <option value="all">Tất cả</option>
+              <option value="F">Nữ</option>
+              <option value="M">Nam</option>
+            </select>
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Tuổi tối thiểu
+            <input type="number" min="0" data-filter="minAge" placeholder="Ví dụ 25" />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Tuổi tối đa
+            <input type="number" min="0" data-filter="maxAge" placeholder="Ví dụ 45" />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Địa điểm
+            <input type="text" data-filter="location" placeholder="Thành phố / mã" />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Trạng thái DUPR
+            <select data-filter="dupr">
+              <option value="all">Tất cả</option>
+              <option value="active">Đang hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+            </select>
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Số sự kiện tối thiểu
+            <input type="number" min="0" data-filter="minEvents" placeholder="0" />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>
+            Từ khóa sự kiện
+            <input type="text" data-filter="eventText" placeholder="Ví dụ Doubles" />
+          </label>
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="reset-btn" id="resetFilters">Xóa bộ lọc</button>
+        </div>
+      </section>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Người chơi</th>
+              <th>Giới tính</th>
+              <th>Tuổi</th>
+              <th>Địa điểm</th>
+              <th>DUPR</th>
+              <th>Số sự kiện</th>
+              <th>Sự kiện đăng ký</th>
+            </tr>
+          </thead>
+          <tbody id="playersBody"></tbody>
+        </table>
+      </div>
+      <p id="statusMessage" class="status" style="margin-top: 1rem">Đang tải dữ liệu...</p>
+    </main>
+
+    <script>
+      const filters = {
+        fullName: "",
+        gender: "all",
+        minAge: "",
+        maxAge: "",
+        location: "",
+        dupr: "all",
+        minEvents: "",
+        eventText: "",
+      };
+
+      let players = [];
+
+      const playersBody = document.querySelector("#playersBody");
+      const resultCount = document.querySelector("#resultCount");
+      const statusMessage = document.querySelector("#statusMessage");
+
+      const formatLocation = (value) => (value ? value : "—");
+
+      const parseNumber = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      const normalizeText = (value) => value?.toLowerCase().trim() ?? "";
+
+      const matchesFilters = (player) => {
+        const nameFilter = normalizeText(filters.fullName);
+        if (nameFilter && !normalizeText(player.fullName).includes(nameFilter)) {
+          return false;
+        }
+
+        if (filters.gender !== "all" && player.gender !== filters.gender) {
+          return false;
+        }
+
+        const minAge = parseNumber(filters.minAge);
+        if (minAge !== null && (player.age ?? 0) < minAge) {
+          return false;
+        }
+
+        const maxAge = parseNumber(filters.maxAge);
+        if (maxAge !== null && (player.age ?? 0) > maxAge) {
+          return false;
+        }
+
+        const locationFilter = normalizeText(filters.location);
+        if (locationFilter && !normalizeText(player.location).includes(locationFilter)) {
+          return false;
+        }
+
+        if (filters.dupr !== "all") {
+          const isActive = Boolean(player.playerDuprActive);
+          if (filters.dupr === "active" && !isActive) return false;
+          if (filters.dupr === "inactive" && isActive) return false;
+        }
+
+        const minEvents = parseNumber(filters.minEvents);
+        const eventsCount = player.events?.length ?? 0;
+        if (minEvents !== null && eventsCount < minEvents) {
+          return false;
+        }
+
+        const eventText = normalizeText(filters.eventText);
+        if (eventText) {
+          const hasMatchingEvent = (player.events || []).some((event) =>
+            normalizeText(`${event.title} ${event.partnerName || ""} ${event.date}`).includes(eventText)
+          );
+          if (!hasMatchingEvent) return false;
+        }
+
+        return true;
+      };
+
+      const renderTable = (data) => {
+        playersBody.innerHTML = "";
+        if (!data.length) {
+          playersBody.innerHTML =
+            '<tr><td colspan="7">Không tìm thấy người chơi nào với bộ lọc hiện tại.</td></tr>';
+          resultCount.textContent = "0";
+          statusMessage.textContent = "Hãy điều chỉnh bộ lọc để xem thêm dữ liệu.";
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        data.forEach((player) => {
+          const tr = document.createElement("tr");
+          const eventsMarkup = (player.events || [])
+            .map(
+              (event) => `
+                <li>
+                  <div class="event-title">${event.title}</div>
+                  <div class="event-meta">
+                    <span>${event.date}</span>
+                    ${event.partnerName ? `<span>Đối tác: ${event.partnerName}</span>` : ""}
+                  </div>
+                </li>
+              `
+            )
+            .join("");
+
+          tr.innerHTML = `
+            <td>
+              <div class="player-cell">
+                <img src="${player.imgUrl}" alt="${player.fullName}" />
+                <div class="player-meta">
+                  <strong>${player.fullName}</strong>
+                  <span class="location-tag">${formatLocation(player.location)}</span>
+                  <span class="location-tag" style="font-size:0.77rem;color:${player.slug ? "var(--muted)" : "#bbb"};">${
+                    player.slug || "Không có slug"
+                  }</span>
+                </div>
+              </div>
+            </td>
+            <td>${player.gender || "—"}</td>
+            <td>${player.age || "—"}</td>
+            <td>${formatLocation(player.location)}</td>
+            <td>
+              <span class="badge ${player.playerDuprActive ? "" : "inactive"}">
+                ${player.playerDuprActive ? "Active" : "Inactive"}
+              </span>
+            </td>
+            <td>${eventsCountMarkup(player)}</td>
+            <td><ul class="event-list">${eventsMarkup || "<li>Chưa đăng ký sự kiện</li>"}</ul></td>
+          `;
+
+          fragment.appendChild(tr);
+        });
+
+        playersBody.appendChild(fragment);
+        resultCount.textContent = data.length.toString();
+        statusMessage.textContent = `Đang hiển thị ${data.length} / ${players.length} người chơi.`;
+      };
+
+      const eventsCountMarkup = (player) => player.events?.length ?? 0;
+
+      const applyFilters = () => {
+        const filtered = players.filter(matchesFilters);
+        renderTable(filtered);
+      };
+
+      const attachFilterListeners = () => {
+        document.querySelectorAll("[data-filter]").forEach((control) => {
+          const eventName = control.tagName === "SELECT" ? "change" : "input";
+          control.addEventListener(eventName, (event) => {
+            filters[control.dataset.filter] = event.target.value;
+            applyFilters();
+          });
+        });
+
+        document.querySelector("#resetFilters").addEventListener("click", () => {
+          Object.keys(filters).forEach((key) => (filters[key] = ""));
+          filters.gender = "all";
+          filters.dupr = "all";
+
+          document.querySelectorAll("[data-filter]").forEach((control) => {
+            if (control.tagName === "SELECT") {
+              control.value = control.dataset.filter === "gender" || control.dataset.filter === "dupr" ? "all" : "";
+            } else {
+              control.value = "";
+            }
+          });
+          applyFilters();
+        });
+      };
+
+      const loadPlayers = async () => {
+        statusMessage.textContent = "Đang tải dữ liệu...";
+        try {
+          const response = await fetch("players.json");
+          if (!response.ok) throw new Error("Không thể tải players.json");
+          players = await response.json();
+          statusMessage.textContent = `Đã tải ${players.length} người chơi.`;
+          applyFilters();
+        } catch (error) {
+          console.error(error);
+          statusMessage.textContent = "Có lỗi khi tải dữ liệu. Vui lòng kiểm tra lại players.json";
+        }
+      };
+
+      attachFilterListeners();
+      loadPlayers();
+    </script>
+  </body>
+</html>
